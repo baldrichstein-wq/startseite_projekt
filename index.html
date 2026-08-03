@@ -20,38 +20,7 @@
         <div class="glow-sphere sphere-2"></div>
     </div>
 
-    <!-- ====================================================== -->
-    <!--  LOGIN GATE (shown when not logged in)                  -->
-    <!-- ====================================================== -->
-    <div id="login-gate" class="login-gate" aria-hidden="false">
-        <div class="login-gate-card">
-            <div class="login-gate-icon">
-                <i class="bi bi-shield-lock-fill"></i>
-            </div>
-            <h1 class="login-gate-title">Projekt-Hub</h1>
-            <p class="login-gate-subtitle">NAS-Portal | Nur für autorisierte Benutzer</p>
-            <form id="login-gate-form" class="login-gate-form">
-                <div class="form-group">
-                    <label for="gate-username">Benutzername</label>
-                    <input type="text" id="gate-username" required placeholder="Benutzername" autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="gate-password">Passwort</label>
-                    <input type="password" id="gate-password" required placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <div class="error-message" id="gate-error" style="display:none;"></div>
-                <button type="submit" class="submit-btn" id="gate-submit-btn">
-                    <i class="bi bi-box-arrow-in-right"></i> Anmelden
-                </button>
-            </form>
-            <p class="login-gate-footer">Projektwoche 2026 &bull; Kein Zugang für Gäste</p>
-        </div>
-    </div>
-
-    <!-- ====================================================== -->
-    <!--  MAIN PORTAL (hidden until logged in)                   -->
-    <!-- ====================================================== -->
-    <div id="portal-content" class="container" style="display:none;">
+    <div class="container">
         <!-- Header Section -->
         <header class="app-header">
             <div class="header-logo">
@@ -73,21 +42,6 @@
                         <span class="stat-value" id="online-count">0</span>
                         <span class="stat-label">Online</span>
                     </div>
-                </div>
-
-                <div class="user-panel" id="user-panel">
-                    <span class="username-badge" id="username-badge">
-                        <i class="bi bi-person-fill"></i>
-                        <span id="user-display-name"></span>
-                        <span class="role-badge" id="role-badge"></span>
-                    </span>
-                    <!-- Admin-only: User Management Button -->
-                    <button id="btn-user-mgmt" class="action-btn admin-only-control" style="display:none;" title="Benutzerverwaltung">
-                        <i class="bi bi-people-fill"></i> Benutzer
-                    </button>
-                    <button id="btn-logout" class="login-btn logout">
-                        <i class="bi bi-box-arrow-right"></i> Logout
-                    </button>
                 </div>
             </div>
         </header>
@@ -127,130 +81,7 @@
                 <span class="dot-separator">•</span>
                 <span>Projektwoche 2026</span>
             </div>
-            <!-- Shown to Admin & Mitarbeiter -->
-            <div class="add-project-link">
-                <button id="btn-add-project" class="action-btn writer-control" style="display:none;">
-                    <i class="bi bi-plus-circle-fill"></i> Projekt hinzufügen
-                </button>
-            </div>
         </footer>
-    </div>
-
-    <!-- ====================================================== -->
-    <!--  ADD PROJECT MODAL                                      -->
-    <!-- ====================================================== -->
-    <div class="modal-overlay" id="add-project-modal" aria-hidden="true">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>Neues Projekt verknüpfen</h2>
-                <button class="close-modal" id="btn-close-modal" aria-label="Schließen">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-            <form id="add-project-form" class="modal-form">
-                <div class="form-group">
-                    <label for="new-project-name">Projektname</label>
-                    <input type="text" id="new-project-name" required placeholder="z.B. Smart Home Control">
-                </div>
-                <div class="form-group">
-                    <label for="new-project-url">URL / Adresse</label>
-                    <input type="url" id="new-project-url" required placeholder="https://smarthome.deine-domain.de">
-                </div>
-                <div class="form-group">
-                    <label for="new-project-desc">Beschreibung</label>
-                    <textarea id="new-project-desc" rows="3" required placeholder="Kurze Beschreibung des Projekts und seiner Funktionen..."></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="new-project-category">Kategorie</label>
-                        <select id="new-project-category">
-                            <option value="Entwicklung">Entwicklung</option>
-                            <option value="Infrastruktur">Infrastruktur</option>
-                            <option value="Produktivität">Produktivität</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-project-icon">Icon</label>
-                        <select id="new-project-icon">
-                            <option value="bi-link-45deg">Standard-Link</option>
-                            <option value="bi-cpu-fill">Server / CPU</option>
-                            <option value="bi-hdd-network-fill">Netzwerk</option>
-                            <option value="bi-code-slash">Code</option>
-                            <option value="bi-house-fill">Home</option>
-                            <option value="bi-lightbulb-fill">Smart-Device</option>
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="submit-btn">Hinzufügen</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ====================================================== -->
-    <!--  USER MANAGEMENT MODAL (Admin only)                     -->
-    <!-- ====================================================== -->
-    <div class="modal-overlay" id="user-mgmt-modal" aria-hidden="true">
-        <div class="modal-card modal-card-wide">
-            <div class="modal-header">
-                <h2><i class="bi bi-people-fill"></i> Benutzerverwaltung</h2>
-                <button class="close-modal" id="btn-close-user-mgmt" aria-label="Schließen">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-
-            <!-- Create New User Form -->
-            <div class="user-mgmt-create">
-                <h3 class="section-label">Neuen Benutzer anlegen</h3>
-                <form id="create-user-form" class="create-user-form">
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label for="new-username">Benutzername</label>
-                            <input type="text" id="new-username" required placeholder="z.B. MaxMustermann">
-                        </div>
-                        <div class="form-group">
-                            <label for="new-user-password">Passwort</label>
-                            <input type="password" id="new-user-password" required placeholder="Sicheres Passwort">
-                        </div>
-                        <div class="form-group">
-                            <label for="new-user-role">Rolle</label>
-                            <select id="new-user-role">
-                                <option value="Benutzer">Benutzer (Lesen)</option>
-                                <option value="Mitarbeiter">Mitarbeiter (Lesen & Schreiben)</option>
-                                <option value="Admin">Admin (Vollzugriff)</option>
-                                <option value="Gast">Gast (Kein Zugang)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="error-message" id="create-user-error" style="display:none;"></div>
-                    <div class="success-message" id="create-user-success" style="display:none;"></div>
-                    <button type="submit" class="submit-btn create-user-submit">
-                        <i class="bi bi-person-plus-fill"></i> Benutzer anlegen
-                    </button>
-                </form>
-            </div>
-
-            <!-- Users Table -->
-            <div class="user-mgmt-list">
-                <h3 class="section-label">Alle Benutzer</h3>
-                <div class="users-table-wrapper">
-                    <table class="users-table" id="users-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Benutzername</th>
-                                <th>Rolle</th>
-                                <th>Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-table-body">
-                            <tr>
-                                <td colspan="4" style="text-align:center; color: var(--text-muted);">Lade Benutzer...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Script File -->

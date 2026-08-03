@@ -34,5 +34,14 @@
     "category": "Infrastruktur",
     "icon": "bi-cpu-fill",
     "status": "checking"
+  },
+  {
+    "id": "nas-filesharing",
+    "name": "NAS Filesharing",
+    "description": "Sicherer Datei-Austausch und Ankündigungs-Board für das NAS-Netzwerk. Nur für autorisierte Benutzer.",
+    "url": "http://localhost:8090",
+    "category": "Infrastruktur",
+    "icon": "bi-folder2-open",
+    "status": "checking"
   }
 ]
