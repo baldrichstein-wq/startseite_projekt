@@ -1,254 +1,332 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
-    const projectsGrid = document.getElementById('projects-grid');
-    const searchInput = document.getElementById('search-input');
-    const clearSearchBtn = document.getElementById('clear-search');
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    const totalCountEl = document.getElementById('total-count');
-    const onlineCountEl = document.getElementById('online-count');
-    
-    // Modals
-    const addProjectBtn = document.getElementById('btn-add-project');
+    // =====================================================
+    //  DOM Elements
+    // =====================================================
+    const loginGate       = document.getElementById('login-gate');
+    const portalContent   = document.getElementById('portal-content');
+    const loginGateForm   = document.getElementById('login-gate-form');
+    const gateError       = document.getElementById('gate-error');
+    const gateSubmitBtn   = document.getElementById('gate-submit-btn');
+
+    const projectsGrid    = document.getElementById('projects-grid');
+    const searchInput     = document.getElementById('search-input');
+    const clearSearchBtn  = document.getElementById('clear-search');
+    const filterButtons   = document.querySelectorAll('.filter-btn');
+    const totalCountEl    = document.getElementById('total-count');
+    const onlineCountEl   = document.getElementById('online-count');
+
+    const addProjectBtn   = document.getElementById('btn-add-project');
     const addProjectModal = document.getElementById('add-project-modal');
-    const closeModalBtn = document.getElementById('btn-close-modal');
-    const addProjectForm = document.getElementById('add-project-form');
+    const closeModalBtn   = document.getElementById('btn-close-modal');
+    const addProjectForm  = document.getElementById('add-project-form');
 
-    const loginTriggerBtn = document.getElementById('btn-login-trigger');
-    const loginModal = document.getElementById('login-modal');
-    const closeLoginBtn = document.getElementById('btn-close-login');
-    const loginForm = document.getElementById('login-form');
-    const loginError = document.getElementById('login-error');
-
-    // User Panel Header Elements
-    const usernameBadge = document.getElementById('username-badge');
+    const logoutBtn       = document.getElementById('btn-logout');
     const userDisplayName = document.getElementById('user-display-name');
-    const logoutBtn = document.getElementById('btn-logout');
+    const roleBadge       = document.getElementById('role-badge');
 
-    let projects = [];
+    // Admin controls
+    const userMgmtBtn          = document.getElementById('btn-user-mgmt');
+    const userMgmtModal        = document.getElementById('user-mgmt-modal');
+    const closeUserMgmtBtn     = document.getElementById('btn-close-user-mgmt');
+    const createUserForm       = document.getElementById('create-user-form');
+    const createUserError      = document.getElementById('create-user-error');
+    const createUserSuccess    = document.getElementById('create-user-success');
+    const usersTableBody       = document.getElementById('users-table-body');
+
+    // =====================================================
+    //  State
+    // =====================================================
+    let projects      = [];
     let activeCategory = 'all';
-    let searchQuery = '';
-    let isLoggedIn = false;
+    let searchQuery    = '';
+    let currentUser    = null; // { username, role }
 
-    // Static Fallback Data
-    const fallbackProjects = [
-        {
-            "id": "portal",
-            "name": "Projekt-Portal (Lokaler Modus)",
-            "description": "Übersichtsseite zur schnellen Navigation. Sie läuft ohne Backend-Verbindung.",
-            "url": "#",
-            "category": "Infrastruktur",
-            "icon": "bi-grid-1x2-fill",
-            "status": "online"
-        }
-    ];
-
-    // Initialize Web App
+    // =====================================================
+    //  Boot
+    // =====================================================
     init();
 
     async function init() {
-        await checkAuthStatus();
-        await loadProjects();
-        setupEventListeners();
+        const user = await checkAuthStatus();
+        if (user && user.loggedIn) {
+            if (user.role === 'Gast') {
+                // Gast gets login gate with error
+                showLoginGate();
+                showGateError('Kein Zugang. Bitte Administrator um Rechtezuweisung bitten.');
+                return;
+            }
+            currentUser = user;
+            showPortal();
+            applyRoleUI();
+            await loadProjects();
+            setupEventListeners();
+        } else {
+            showLoginGate();
+            setupLoginGateListener();
+        }
     }
 
-    // Check login status on load
+    // =====================================================
+    //  Auth check
+    // =====================================================
     async function checkAuthStatus() {
         try {
-            const response = await fetch('/api/auth/me');
-            const data = await response.json();
-            
-            isLoggedIn = data.loggedIn;
-            if (isLoggedIn) {
-                userDisplayName.textContent = data.username;
-                usernameBadge.style.display = 'inline-flex';
-                logoutBtn.style.display = 'inline-block';
-                loginTriggerBtn.style.display = 'none';
-                addProjectBtn.style.display = 'flex'; // Show add button
-            } else {
-                usernameBadge.style.display = 'none';
-                logoutBtn.style.display = 'none';
-                loginTriggerBtn.style.display = 'inline-block';
-                addProjectBtn.style.display = 'none'; // Hide add button if not logged in
-            }
-        } catch (error) {
-            console.warn('Authentifizierungs-Check fehlgeschlagen (evtl. statischer Betrieb):', error.message);
-            // In static fallback mode, we hide add button to prevent confusing the user
-            addProjectBtn.style.display = 'none';
+            const res = await fetch('/api/auth/me');
+            return await res.json();
+        } catch {
+            return { loggedIn: false };
         }
     }
 
-    // Load projects from DB API or Fallback
-    async function loadProjects() {
-        try {
-            const response = await fetch('/api/projects');
-            if (!response.ok) throw new Error('Konnte Datenbank-Projekte nicht laden');
-            projects = await response.json();
-        } catch (error) {
-            console.warn('Verwende Fallback-Projektdaten:', error.message);
-            projects = [...fallbackProjects];
+    // =====================================================
+    //  UI Visibility helpers
+    // =====================================================
+    function showLoginGate() {
+        loginGate.style.display = 'flex';
+        portalContent.style.display = 'none';
+    }
+
+    function showPortal() {
+        loginGate.style.display = 'none';
+        portalContent.style.display = 'flex';
+    }
+
+    function showGateError(msg) {
+        gateError.textContent = msg;
+        gateError.style.display = 'block';
+    }
+
+    // =====================================================
+    //  Role-based UI setup
+    // =====================================================
+    function applyRoleUI() {
+        if (!currentUser) return;
+
+        userDisplayName.textContent = currentUser.username;
+        roleBadge.textContent = currentUser.role;
+        roleBadge.className = `role-badge ${currentUser.role}`;
+
+        const role = currentUser.role;
+
+        // Admin & Mitarbeiter can add projects
+        if (role === 'Admin' || role === 'Mitarbeiter') {
+            addProjectBtn.style.display = 'flex';
+        } else {
+            addProjectBtn.style.display = 'none';
         }
 
+        // Only Admin sees user management
+        if (role === 'Admin') {
+            userMgmtBtn.style.display = 'flex';
+        } else {
+            userMgmtBtn.style.display = 'none';
+        }
+    }
+
+    // =====================================================
+    //  Login Gate form submit
+    // =====================================================
+    function setupLoginGateListener() {
+        loginGateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            gateError.style.display = 'none';
+
+            const username = document.getElementById('gate-username').value.trim();
+            const password = document.getElementById('gate-password').value;
+
+            gateSubmitBtn.disabled = true;
+            gateSubmitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Anmelden...';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    currentUser = { username: data.username, role: data.role };
+
+                    if (data.role === 'Gast') {
+                        showGateError('Kein Zugang. Bitte Administrator um Rechtezuweisung bitten.');
+                        gateSubmitBtn.disabled = false;
+                        gateSubmitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Anmelden';
+                        return;
+                    }
+
+                    showPortal();
+                    applyRoleUI();
+                    await loadProjects();
+                    setupEventListeners();
+                } else {
+                    showGateError(data.error || 'Anmeldung fehlgeschlagen.');
+                    gateSubmitBtn.disabled = false;
+                    gateSubmitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Anmelden';
+                }
+            } catch {
+                showGateError('Netzwerkfehler. Server erreichbar?');
+                gateSubmitBtn.disabled = false;
+                gateSubmitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Anmelden';
+            }
+        });
+    }
+
+    // =====================================================
+    //  Load Projects
+    // =====================================================
+    async function loadProjects() {
+        try {
+            const res = await fetch('/api/projects');
+            if (!res.ok) throw new Error('Laden fehlgeschlagen');
+            projects = await res.json();
+        } catch (err) {
+            console.warn('Projektefehler:', err.message);
+            projects = [];
+        }
         renderProjects();
         checkProjectsStatus();
     }
 
-    // Render projects grid
+    // =====================================================
+    //  Render Projects Grid
+    // =====================================================
     function renderProjects() {
-        const filtered = projects.filter(project => {
-            const matchesCategory = activeCategory === 'all' || project.category === activeCategory;
-            const matchesSearch = project.name.toLowerCase().includes(searchQuery) ||
-                                  (project.description && project.description.toLowerCase().includes(searchQuery)) ||
-                                  project.category.toLowerCase().includes(searchQuery);
-            return matchesCategory && matchesSearch;
+        const filtered = projects.filter(p => {
+            const matchCat  = activeCategory === 'all' || p.category === activeCategory;
+            const matchSrch = p.name.toLowerCase().includes(searchQuery) ||
+                              (p.description && p.description.toLowerCase().includes(searchQuery)) ||
+                              p.category.toLowerCase().includes(searchQuery);
+            return matchCat && matchSrch;
         });
 
-        // Update stats
-        totalCountEl.textContent = projects.length;
-        const onlineCount = projects.filter(p => p.status === 'online').length;
-        onlineCountEl.textContent = onlineCount;
+        totalCountEl.textContent  = projects.length;
+        onlineCountEl.textContent = projects.filter(p => p.status === 'online').length;
 
         if (filtered.length === 0) {
             projectsGrid.innerHTML = `
                 <div class="empty-state">
                     <i class="bi bi-search"></i>
-                    <p>Keine Projekte gefunden, die deiner Suche entsprechen.</p>
-                </div>
-            `;
+                    <p>Keine Projekte gefunden.</p>
+                </div>`;
             return;
         }
 
-        projectsGrid.innerHTML = filtered.map(project => {
-            const isExternal = project.url && project.url.startsWith('http');
-            const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
-            
-            // Render delete button only if logged in, and project is not the main portal
-            const deleteBtnHtml = (isLoggedIn && project.id !== 'portal') 
-                ? `<button class="delete-project-btn" data-id="${project.id}" title="Projekt löschen" aria-label="Projekt löschen">
-                     <i class="bi bi-trash-fill"></i>
-                   </button>` 
-                : '';
+        const canDelete = currentUser && currentUser.role === 'Admin';
+
+        projectsGrid.innerHTML = filtered.map(p => {
+            const isExternal  = p.url && p.url.startsWith('http');
+            const targetAttr  = isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
+            const deleteBtn   = canDelete && p.id !== 'portal'
+                ? `<button class="delete-project-btn" data-id="${p.id}" title="Löschen" aria-label="Projekt löschen">
+                       <i class="bi bi-trash-fill"></i>
+                   </button>` : '';
 
             return `
-                <div class="project-card-wrapper" style="position: relative;">
-                    ${deleteBtnHtml}
-                    <a href="${project.url}" ${targetAttr} class="project-card" data-id="${project.id}">
+                <div class="project-card-wrapper" style="position:relative;">
+                    ${deleteBtn}
+                    <a href="${p.url}" ${targetAttr} class="project-card" data-id="${p.id}">
                         <div class="card-header">
                             <div class="project-icon-wrapper">
-                                <i class="bi ${project.icon || 'bi-link-45deg'}"></i>
+                                <i class="bi ${p.icon || 'bi-link-45deg'}"></i>
                             </div>
-                            <div class="status-indicator ${project.status || 'checking'}" id="status-${project.id}">
+                            <div class="status-indicator ${p.status || 'checking'}" id="status-${p.id}">
                                 <span class="status-dot"></span>
-                                <span class="status-text">${getStatusLabel(project.status)}</span>
+                                <span class="status-text">${getStatusLabel(p.status)}</span>
                             </div>
                         </div>
                         <div class="card-body">
-                            <h2 class="project-title">${escapeHtml(project.name)}</h2>
-                            <p class="project-desc">${escapeHtml(project.description || '')}</p>
+                            <h2 class="project-title">${escapeHtml(p.name)}</h2>
+                            <p class="project-desc">${escapeHtml(p.description || '')}</p>
                         </div>
                         <div class="card-footer">
-                            <span class="project-category">${escapeHtml(project.category)}</span>
+                            <span class="project-category">${escapeHtml(p.category)}</span>
                             <span class="launch-btn">Öffnen <i class="bi bi-arrow-right"></i></span>
                         </div>
                     </a>
-                </div>
-            `;
+                </div>`;
         }).join('');
 
-        // Attach Delete Listeners
-        if (isLoggedIn) {
+        // Attach delete listeners (Admin only)
+        if (canDelete) {
             document.querySelectorAll('.delete-project-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const projectId = btn.getAttribute('data-id');
                     if (confirm('Möchtest du dieses Projekt wirklich löschen?')) {
-                        await deleteProject(projectId);
+                        await deleteProject(btn.getAttribute('data-id'));
                     }
                 });
             });
         }
     }
 
-    function getStatusLabel(status) {
-        switch (status) {
-            case 'online': return 'Online';
-            case 'offline': return 'Offline';
-            case 'checking': return 'Prüfe...';
-            default: return 'Unbekannt';
-        }
+    function getStatusLabel(s) {
+        return { online: 'Online', offline: 'Offline', checking: 'Prüfe...' }[s] || 'Unbekannt';
     }
 
-    // Ping check for projects
+    // =====================================================
+    //  Status ping
+    // =====================================================
     async function checkProjectsStatus() {
-        projects.forEach(async (project) => {
-            if (project.url === '#' || !project.url.startsWith('http')) {
-                updateProjectStatus(project.id, 'online');
+        projects.forEach(async (p) => {
+            if (!p.url || p.url === '#' || !p.url.startsWith('http')) {
+                updateProjectStatus(p.id, 'online');
                 return;
             }
-
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-                await fetch(project.url, {
-                    method: 'GET',
-                    mode: 'no-cors',
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-                updateProjectStatus(project.id, 'online');
-            } catch (error) {
-                updateProjectStatus(project.id, 'offline');
+                const ctrl = new AbortController();
+                const tid  = setTimeout(() => ctrl.abort(), 4000);
+                await fetch(p.url, { method: 'GET', mode: 'no-cors', signal: ctrl.signal });
+                clearTimeout(tid);
+                updateProjectStatus(p.id, 'online');
+            } catch {
+                updateProjectStatus(p.id, 'offline');
             }
         });
     }
 
-    function updateProjectStatus(projectId, status) {
-        const project = projects.find(p => p.id === projectId);
-        if (project) {
-            project.status = status;
-            
-            const indicatorEl = document.getElementById(`status-${projectId}`);
-            if (indicatorEl) {
-                indicatorEl.className = `status-indicator ${status}`;
-                indicatorEl.querySelector('.status-text').textContent = getStatusLabel(status);
+    function updateProjectStatus(id, status) {
+        const p = projects.find(x => x.id === id);
+        if (p) {
+            p.status = status;
+            const el = document.getElementById(`status-${id}`);
+            if (el) {
+                el.className = `status-indicator ${status}`;
+                el.querySelector('.status-text').textContent = getStatusLabel(status);
             }
-            
-            const onlineCount = projects.filter(p => p.status === 'online').length;
-            onlineCountEl.textContent = onlineCount;
+            onlineCountEl.textContent = projects.filter(x => x.status === 'online').length;
         }
     }
 
-    // Delete project API request
-    async function deleteProject(projectId) {
+    // =====================================================
+    //  Delete project
+    // =====================================================
+    async function deleteProject(id) {
         try {
-            const response = await fetch(`/api/projects/${projectId}`, {
-                method: 'DELETE'
-            });
-            const data = await response.json();
-            
-            if (response.ok) {
-                projects = projects.filter(p => p.id !== projectId);
+            const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                projects = projects.filter(p => p.id !== id);
                 renderProjects();
             } else {
-                alert('Fehler beim Löschen: ' + data.error);
+                alert('Fehler: ' + data.error);
             }
-        } catch (error) {
-            alert('Netzwerkfehler beim Löschen des Projekts.');
+        } catch {
+            alert('Netzwerkfehler beim Löschen.');
         }
     }
 
-    // Event Listeners Setup
+    // =====================================================
+    //  Event Listeners
+    // =====================================================
     function setupEventListeners() {
-        // Search Input
+        // Search
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase().trim();
             clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
             renderProjects();
         });
-
-        // Clear Search
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
             searchQuery = '';
@@ -257,127 +335,210 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProjects();
         });
 
-        // Categories Filter
-        filterButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                activeCategory = button.getAttribute('data-category');
+        // Category filter
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeCategory = btn.getAttribute('data-category');
                 renderProjects();
             });
         });
 
-        // Modal triggers
-        addProjectBtn.addEventListener('click', () => {
-            addProjectModal.classList.add('active');
-            addProjectModal.setAttribute('aria-hidden', 'false');
-        });
+        // Add project modal
+        addProjectBtn.addEventListener('click', () => openModal(addProjectModal));
+        closeModalBtn.addEventListener('click',  () => closeModal(addProjectModal, addProjectForm));
+        addProjectModal.addEventListener('click', (e) => { if (e.target === addProjectModal) closeModal(addProjectModal, addProjectForm); });
 
-        const closeAddModal = () => {
-            addProjectModal.classList.remove('active');
-            addProjectModal.setAttribute('aria-hidden', 'true');
-            addProjectForm.reset();
-        };
-
-        closeModalBtn.addEventListener('click', closeAddModal);
-        addProjectModal.addEventListener('click', (e) => {
-            if (e.target === addProjectModal) closeAddModal();
-        });
-
-        // Login Modal triggers
-        loginTriggerBtn.addEventListener('click', () => {
-            loginModal.classList.add('active');
-            loginModal.setAttribute('aria-hidden', 'false');
-            loginError.style.display = 'none';
-        });
-
-        const closeLoginModal = () => {
-            loginModal.classList.remove('active');
-            loginModal.setAttribute('aria-hidden', 'true');
-            loginForm.reset();
-            loginError.style.display = 'none';
-        };
-
-        closeLoginBtn.addEventListener('click', closeLoginModal);
-        loginModal.addEventListener('click', (e) => {
-            if (e.target === loginModal) closeLoginModal();
-        });
-
-        // Add Project Form Submit
+        // Add project form
         addProjectForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const name = document.getElementById('new-project-name').value;
-            const url = document.getElementById('new-project-url').value;
-            const description = document.getElementById('new-project-desc').value;
-            const category = document.getElementById('new-project-category').value;
-            const icon = document.getElementById('new-project-icon').value;
-
+            const body = {
+                name:        document.getElementById('new-project-name').value,
+                url:         document.getElementById('new-project-url').value,
+                description: document.getElementById('new-project-desc').value,
+                category:    document.getElementById('new-project-category').value,
+                icon:        document.getElementById('new-project-icon').value
+            };
             try {
-                const response = await fetch('/api/projects', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, url, description, category, icon })
-                });
-
-                const data = await response.json();
-                if (response.ok) {
+                const res  = await fetch('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (res.ok) {
                     projects.push(data);
                     renderProjects();
-                    closeAddModal();
-                    // trigger ping checking for new item
+                    closeModal(addProjectModal, addProjectForm);
                     checkProjectsStatus();
                 } else {
                     alert('Fehler: ' + data.error);
                 }
-            } catch (error) {
-                alert('Projekt konnte nicht im Backend gespeichert werden.');
-            }
-        });
-
-        // Login Form Submit
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const data = await response.json();
-                if (response.ok) {
-                    closeLoginModal();
-                    await checkAuthStatus();
-                    await loadProjects(); // reload to get delete permissions
-                } else {
-                    loginError.textContent = data.error;
-                    loginError.style.display = 'block';
-                }
-            } catch (error) {
-                loginError.textContent = 'Netzwerkfehler beim Anmelden.';
-                loginError.style.display = 'block';
+            } catch {
+                alert('Netzwerkfehler beim Hinzufügen.');
             }
         });
 
         // Logout
         logoutBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('/api/auth/logout', { method: 'POST' });
-                if (response.ok) {
-                    await checkAuthStatus();
-                    await loadProjects(); // reload to update views/permissions
-                }
-            } catch (error) {
-                console.error('Logout fehlgeschlagen:', error);
-            }
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch {}
+            currentUser = null;
+            showLoginGate();
+            setupLoginGateListener();
         });
+
+        // User management modal (Admin only)
+        if (userMgmtBtn) {
+            userMgmtBtn.addEventListener('click', async () => {
+                openModal(userMgmtModal);
+                await loadUsers();
+            });
+        }
+        if (closeUserMgmtBtn) {
+            closeUserMgmtBtn.addEventListener('click', () => closeModal(userMgmtModal, createUserForm));
+        }
+        if (userMgmtModal) {
+            userMgmtModal.addEventListener('click', (e) => {
+                if (e.target === userMgmtModal) closeModal(userMgmtModal, createUserForm);
+            });
+        }
+
+        // Create user form
+        if (createUserForm) {
+            createUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                createUserError.style.display   = 'none';
+                createUserSuccess.style.display = 'none';
+
+                const body = {
+                    username: document.getElementById('new-username').value.trim(),
+                    password: document.getElementById('new-user-password').value,
+                    role:     document.getElementById('new-user-role').value
+                };
+
+                try {
+                    const res  = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const data = await res.json();
+                    if (res.ok) {
+                        createUserSuccess.textContent  = `Benutzer "${body.username}" erfolgreich angelegt.`;
+                        createUserSuccess.style.display = 'block';
+                        createUserForm.reset();
+                        await loadUsers();
+                    } else {
+                        createUserError.textContent  = data.error;
+                        createUserError.style.display = 'block';
+                    }
+                } catch {
+                    createUserError.textContent  = 'Netzwerkfehler.';
+                    createUserError.style.display = 'block';
+                }
+            });
+        }
     }
 
-    // Helper: Escape HTML strings to prevent XSS
+    // =====================================================
+    //  User Management: Load & Render
+    // =====================================================
+    async function loadUsers() {
+        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Lade...</td></tr>';
+        try {
+            const res   = await fetch('/api/admin/users');
+            const users = await res.json();
+            if (!res.ok) throw new Error(users.error);
+
+            if (users.length === 0) {
+                usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Keine Benutzer gefunden.</td></tr>';
+                return;
+            }
+
+            usersTableBody.innerHTML = users.map(u => `
+                <tr data-uid="${u.id}">
+                    <td>#${u.id}</td>
+                    <td><strong>${escapeHtml(u.username)}</strong></td>
+                    <td>
+                        <select class="role-select-inline" data-uid="${u.id}">
+                            ${['Admin','Mitarbeiter','Benutzer','Gast'].map(r =>
+                                `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`
+                            ).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-save-role" data-uid="${u.id}"><i class="bi bi-check-lg"></i> Speichern</button>
+                            <button class="btn-delete-user" data-uid="${u.id}" data-username="${escapeHtml(u.username)}"><i class="bi bi-trash"></i> Löschen</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Save role buttons
+            document.querySelectorAll('.btn-save-role').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const uid  = btn.getAttribute('data-uid');
+                    const role = document.querySelector(`.role-select-inline[data-uid="${uid}"]`).value;
+                    try {
+                        const res  = await fetch(`/api/admin/users/${uid}/role`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ role })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            createUserSuccess.textContent  = `Rolle erfolgreich geändert.`;
+                            createUserSuccess.style.display = 'block';
+                            setTimeout(() => createUserSuccess.style.display = 'none', 3000);
+                        } else {
+                            alert('Fehler: ' + data.error);
+                        }
+                    } catch {
+                        alert('Netzwerkfehler.');
+                    }
+                });
+            });
+
+            // Delete user buttons
+            document.querySelectorAll('.btn-delete-user').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const uid      = btn.getAttribute('data-uid');
+                    const username = btn.getAttribute('data-username');
+                    if (!confirm(`Benutzer "${username}" wirklich löschen?`)) return;
+                    try {
+                        const res  = await fetch(`/api/admin/users/${uid}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (res.ok) {
+                            await loadUsers();
+                        } else {
+                            alert('Fehler: ' + data.error);
+                        }
+                    } catch {
+                        alert('Netzwerkfehler.');
+                    }
+                });
+            });
+
+        } catch (err) {
+            usersTableBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger);">${err.message}</td></tr>`;
+        }
+    }
+
+    // =====================================================
+    //  Modal helpers
+    // =====================================================
+    function openModal(modal) {
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeModal(modal, form) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+        if (form) form.reset();
+        if (createUserError)  { createUserError.style.display = 'none'; }
+        if (createUserSuccess) { createUserSuccess.style.display = 'none'; }
+    }
+
+    // =====================================================
+    //  Utility: HTML escape
+    // =====================================================
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, '&amp;')

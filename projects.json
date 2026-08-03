@@ -12,7 +12,7 @@
     "id": "archiv",
     "name": "Historisches Archiv",
     "description": "Eine Webanwendung zur Digitalisierung und Transkription historischer Postkarten und Dokumente.",
-    "url": "http://localhost:8080/archiv",
+    "url": "http://localhost:8080/archiv/",
     "category": "Entwicklung",
     "icon": "bi-archive-fill",
     "status": "checking"
@@ -21,7 +21,7 @@
     "id": "projektmitmarv",
     "name": "Rezeptbuch (projektmitmarv)",
     "description": "Ein interaktives Rezeptbuch mit Portionsrechner, Weinempfehlungen und einer Kommentarfunktion.",
-    "url": "/projektmitmarv",
+    "url": "http://localhost:8082",
     "category": "Entwicklung",
     "icon": "bi-journal-bookmark-fill",
     "status": "checking"

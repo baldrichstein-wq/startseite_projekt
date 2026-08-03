@@ -3,8 +3,6 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 
-// Connection Pool Configuration
-// Uses DATABASE_URL environment variable if present, or individual connection parameters
 const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool(connectionString ? { connectionString } : {
@@ -15,15 +13,28 @@ const pool = new Pool(connectionString ? { connectionString } : {
     database: process.env.PGDATABASE || 'portal'
 });
 
-// Database initialization wrapper
+// Database initialization wrapper with retry logic
 const initDb = async () => {
+    let retries = 10;
+    while (retries > 0) {
+        try {
+            await pool.query('SELECT 1');
+            break;
+        } catch (err) {
+            retries -= 1;
+            console.log(`Database not ready yet. Retrying in 2 seconds... (${retries} attempts remaining)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+
     try {
-        // 1. Create Users Table
+        // 1. Create Users Table with role column
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(20) DEFAULT 'Gast'
             );
         `);
 
@@ -40,21 +51,21 @@ const initDb = async () => {
             );
         `);
 
-        // 3. Seed Default Admin User
+        // 3. Seed Default Admin User (DavidErbs / Cleanhunter-01)
         const userCountRes = await pool.query("SELECT COUNT(*) as count FROM users");
         const userCount = parseInt(userCountRes.rows[0].count, 10);
         
         if (userCount === 0) {
-            const defaultUser = 'admin';
-            const defaultPassword = 'admin1234';
+            const defaultUser = 'DavidErbs';
+            const defaultPassword = 'Cleanhunter-01';
             const salt = bcrypt.genSaltSync(10);
             const hash = bcrypt.hashSync(defaultPassword, salt);
 
             await pool.query(
-                "INSERT INTO users (username, password_hash) VALUES ($1, $2)",
-                [defaultUser, hash]
+                "INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)",
+                [defaultUser, hash, 'Admin']
             );
-            console.log(`Default admin user seeded in PostgreSQL: ${defaultUser} / ${defaultPassword}`);
+            console.log(`Default admin user seeded in PostgreSQL: ${defaultUser} / ${defaultPassword} (Role: Admin)`);
         }
 
         // 4. Seed Default Projects
@@ -83,7 +94,6 @@ const initDb = async () => {
     }
 };
 
-// Export Pool and query helpers
 module.exports = {
     pool,
     query: (text, params) => pool.query(text, params),
