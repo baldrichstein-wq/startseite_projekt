@@ -29,5 +29,16 @@ services:
     depends_on:
       - db
 
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: portal_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token eyJhIjoiZDgwYTZlYjFjYTk1ZjMwYzkwM2JiYmMzM2YwYmNjOTYiLCJ0IjoiMzJhY2ZhZjQtMDk4Zi00M2EwLTgyODAtYzcwZjVhODQ3NWRmIiwicyI6Ik1qbGhNR1psWVRBdFpEUmxZUzAwWTJZeUxUaGlPRFV0T1dNMFltRmhNek01TldRMCJ9
+    depends_on:
+      - app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
