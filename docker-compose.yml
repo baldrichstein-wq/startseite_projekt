@@ -25,7 +25,6 @@ services:
     environment:
       - PORT=8089
       - DATABASE_URL=postgres://postgres:adminpassword1234@db:5432/portal
-      - JWT_SECRET=mein-sicheres-projektwoche-secret-9876
     depends_on:
       - db
 
@@ -34,7 +33,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: portal_cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token eyJhIjoiZDgwYTZlYjFjYTk1ZjMwYzkwM2JiYmMzM2YwYmNjOTYiLCJ0IjoiMzJhY2ZhZjQtMDk4Zi00M2EwLTgyODAtYzcwZjVhODQ3NWRmIiwicyI6Ik1qbGhNR1psWVRBdFpEUmxZUzAwWTJZeUxUaGlPRFV0T1dNMFltRmhNek01TldRMCJ9
+    command: tunnel --no-autoupdate run --token eyJhIjoiZDgwYTZlYjFjYTk1ZjMwYzkwM2JiYmMzM2YwYmNjOTYiLCJ0IjoiNGYyODdiMTItYTMxZC00MWM0LWJlZjgtYTUwNjkxMTcwN2ZhIiwicyI6Ik1USTFaV1prTUdVdFl6UmpPUzAwWmprNUxXSXhOVFl0TVdSaE1HTTNNelZqTUdRdyJ9
     depends_on:
       - app
     extra_hosts:
